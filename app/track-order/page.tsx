@@ -213,5 +213,6 @@ const TrackOrderPage = () => {
     </div>
   );
 };
+<button onClick={() => router.push("/")} >Back to Home</button>
 
 export default TrackOrderPage;
