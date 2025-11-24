@@ -54,13 +54,12 @@ const UploadPhotosPage = () => {
 
           const bookingRef = doc(db, 'bookings', bookingId);
           await updateDoc(bookingRef, {
-            status: 'pending_location_share',
+            status: 'pending_checkout',
           });
           console.log('Booking status updated.');
 
-          // Small delay for user to see success state if we were showing one, 
-          // but we'll redirect immediately for smoother flow
-          router.push(`/nearby-mechanics?bookingId=${bookingId}`);
+          // Redirect directly to checkout, skipping the nearby-mechanics page
+          router.push(`/checkout?bookingId=${bookingId}`);
         } else {
           console.error('Error saving file locally:', result.message);
         }
@@ -123,7 +122,7 @@ const UploadPhotosPage = () => {
                 </Button>
 
                 <button
-                  onClick={() => router.push(`/nearby-mechanics?bookingId=${bookingId}`)}
+                  onClick={() => router.push(`/checkout?bookingId=${bookingId}`)}
                   className="text-sm text-muted-foreground hover:text-primary transition-colors text-center"
                 >
                   Skip for now
