@@ -1,192 +1,193 @@
-"use client"; // This is a Client Component
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Assuming config.js is in src/lib/firebase
-
-interface BookingDetails {
-  carModel: string;
-  carNumber: string;
-  date: string;
-  time: string;
-  selectedServices: string[];
-  photoUrls: string[];
-  userLocation: { latitude: number; longitude: number };
-  mechanicId: string;
-  status: string;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-}
-
-const allServices = [
-  { id: 'flat_tyre', name: 'Flat Tyre Repair', price: 50 },
-  { id: 'battery', name: 'Battery Replacement', price: 150 },
-  { id: 'general_service', name: 'General Service', price: 200 },
-  { id: 'oil_change', name: 'Oil Change', price: 80 },
-  { id: 'brake_inspection', name: 'Brake Inspection', price: 70 },
-  { id: 'ac_service', name: 'AC Service', price: 120 },
-];
-
-const dummyMechanics = [
-  { id: 'mech1', name: 'AutoFix Pro', rating: 4.8, distance: 5.2, estimatedArrival: '25 min', price: 100 },
-  { id: 'mech2', name: 'Speedy Repairs', rating: 4.5, distance: 8.1, estimatedArrival: '40 min', price: 90 },
-  { id: 'mech3', name: 'Reliable Auto', rating: 4.9, distance: 3.5, estimatedArrival: '15 min', price: 110 },
-  { id: 'mech4', name: 'Quick Service', rating: 4.2, distance: 10.0, estimatedArrival: '50 min', price: 85 },
-];
+import { db } from '@/lib/firebase';
+import { motion } from 'framer-motion';
+import { CreditCard, CheckCircle2, DollarSign, Calendar, Car } from 'lucide-react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 
 const CheckoutPage = () => {
-  const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
+  const [bookingData, setBookingData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('bookingId');
 
   useEffect(() => {
-    if (!bookingId) {
-      router.push('/book-service');
-      return;
-    }
-
-    const fetchBookingDetails = async () => {
+    const fetchBooking = async () => {
+      if (!bookingId) return;
       try {
-        const bookingRef = doc(db, 'bookings', bookingId);
-        const bookingSnap = await getDoc(bookingRef);
-
-        if (bookingSnap.exists()) {
-          setBookingDetails(bookingSnap.data() as BookingDetails);
+        const docRef = doc(db, 'bookings', bookingId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setBookingData(docSnap.data());
         } else {
-          setError('Booking not found.');
+          console.log('No such document!');
         }
-      } catch (e) {
-        console.error('Error fetching booking details:', e);
-        setError('Failed to load booking details.');
+      } catch (error) {
+        console.error('Error getting document:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBookingDetails();
-  }, [bookingId, router]);
+    fetchBooking();
+  }, [bookingId]);
 
-  const calculateTotalPrice = () => {
-    if (!bookingDetails || !bookingDetails.selectedServices) return 0;
-    return bookingDetails.selectedServices.reduce((total, serviceId) => {
-      const service = allServices.find(s => s.id === serviceId);
-      return total + (service ? service.price : 0);
-    }, 0);
+  const handlePayment = async () => {
+    setProcessing(true);
+    // Simulate payment processing
+    setTimeout(async () => {
+      try {
+        if (!bookingId) return;
+        const bookingRef = doc(db, 'bookings', bookingId);
+        await updateDoc(bookingRef, {
+          status: 'confirmed',
+          paymentStatus: 'paid',
+        });
+        router.push(`/track-order?bookingId=${bookingId}`);
+      } catch (e) {
+        console.error('Error updating document: ', e);
+        alert("Payment failed. Please try again.");
+      } finally {
+        setProcessing(false);
+      }
+    }, 2000);
   };
-
-  const getMechanicName = (mechanicId: string) => {
-    const mechanic = dummyMechanics.find(m => m.id === mechanicId);
-    return mechanic ? mechanic.name : 'N/A';
-  };
-
-  const handleConfirmBooking = async () => {
-    if (!bookingId) {
-      console.error('Booking ID is missing.');
-      return;
-    }
-
-    try {
-      const bookingRef = doc(db, 'bookings', bookingId);
-      await updateDoc(bookingRef, {
-        status: 'confirmed', // Update status to confirmed
-      });
-      console.log('Booking confirmed!');
-
-      // Redirect to /track-order
-      router.push(`/track-order?bookingId=${bookingId}`);
-    } catch (e) {
-      console.error('Error confirming booking: ', e);
-      // Optionally, show an error message to the user
-    }
-  };
-
-  if (!bookingId) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-gray-700">Loading or invalid booking...</p>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-gray-700">Loading booking summary...</p>
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-red-500">{error}</p>
-      </div>
-    );
-  }
-
-  if (!bookingDetails) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-gray-700">No booking details available.</p>
-      </div>
-    );
-  }
-
-  const totalPrice = calculateTotalPrice();
+  if (!bookingData) return null;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-blue-600 mb-8">Checkout Summary</h1>
+    <div className="min-h-screen bg-secondary/30 flex flex-col font-sans">
+      <Header />
 
-        <div className="mb-6 space-y-3">
-          <h2 className="text-xl font-semibold text-gray-800">Car Details</h2>
-          <p className="text-gray-700"><strong>Model:</strong> {bookingDetails.carModel}</p>
-          <p className="text-gray-700"><strong>Number:</strong> {bookingDetails.carNumber}</p>
-          <p className="text-gray-700"><strong>Date:</strong> {bookingDetails.date}</p>
-          <p className="text-gray-700"><strong>Time:</strong> {bookingDetails.time}</p>
+      <main className="flex-grow container mx-auto px-4 py-20">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+
+          {/* Order Summary */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="h-full border-border/50 shadow-lg">
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+                <CardDescription>Review your booking details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-start gap-4 p-4 bg-secondary/50 rounded-lg">
+                  <Car className="w-6 h-6 text-primary mt-1" />
+                  <div>
+                    <p className="font-semibold text-lg">{bookingData.carModel}</p>
+                    <p className="text-muted-foreground">{bookingData.carNumber}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-4 bg-secondary/50 rounded-lg">
+                  <Calendar className="w-6 h-6 text-primary mt-1" />
+                  <div>
+                    <p className="font-semibold text-lg">{bookingData.date}</p>
+                    <p className="text-muted-foreground">{bookingData.time}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-4">
+                  <h4 className="font-semibold mb-3">Selected Services</h4>
+                  <ul className="space-y-2">
+                    {bookingData.selectedServices?.map((service: string) => (
+                      <li key={service} className="flex items-center gap-2 text-muted-foreground capitalize">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        {service.replace('_', ' ')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="border-t border-border pt-4 flex justify-between items-center">
+                  <span className="font-bold text-xl">Total</span>
+                  <span className="font-bold text-2xl text-primary">$XXX.00</span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Payment Form */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Card className="h-full border-border/50 shadow-lg">
+              <CardHeader>
+                <CardTitle>Payment Details</CardTitle>
+                <CardDescription>Secure checkout</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Cardholder Name</label>
+                  <Input placeholder="John Doe" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Card Number</label>
+                  <div className="relative">
+                    <CreditCard className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
+                    <Input placeholder="0000 0000 0000 0000" className="pl-10" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Expiry Date</label>
+                    <Input placeholder="MM/YY" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">CVC</label>
+                    <Input placeholder="123" />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handlePayment}
+                  className="w-full h-12 text-lg mt-4"
+                  disabled={processing}
+                >
+                  {processing ? (
+                    "Processing..."
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <DollarSign className="w-5 h-5" /> Pay Now
+                    </span>
+                  )}
+                </Button>
+
+                <p className="text-xs text-center text-muted-foreground mt-4">
+                  Your payment is secured by 256-bit SSL encryption.
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
         </div>
+      </main>
 
-        <div className="mb-6 space-y-3">
-          <h2 className="text-xl font-semibold text-gray-800">Selected Services</h2>
-          {bookingDetails.selectedServices.length > 0 ? (
-            <ul className="list-disc list-inside text-gray-700">
-              {bookingDetails.selectedServices.map((serviceId) => {
-                const service = allServices.find(s => s.id === serviceId);
-                return <li key={serviceId}>{service?.name} (${service?.price})</li>;
-              })}
-            </ul>
-          ) : (
-            <p className="text-gray-700">No services selected.</p>
-          )}
-        </div>
-
-        {bookingDetails.mechanicId && (
-          <div className="mb-6 space-y-3">
-            <h2 className="text-xl font-semibold text-gray-800">Assigned Mechanic</h2>
-            <p className="text-gray-700"><strong>Name:</strong> {getMechanicName(bookingDetails.mechanicId)}</p>
-          </div>
-        )}
-
-        <div className="mb-8 text-right">
-          <p className="text-2xl font-bold text-blue-600">Total Price: ${totalPrice}</p>
-        </div>
-
-        <button
-          onClick={handleConfirmBooking}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-full w-full focus:outline-none focus:shadow-outline transition duration-300"
-        >
-          Confirm Booking
-        </button>
-      </div>
+      <Footer />
     </div>
   );
 };

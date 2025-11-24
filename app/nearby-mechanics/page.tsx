@@ -1,15 +1,20 @@
-"use client"; // This is a Client Component
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Assuming config.js is in src/lib/firebase
+import { db } from '@/lib/firebase';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { MapPin, Navigation, Loader2 } from 'lucide-react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 
 const containerStyle = {
   width: '100%',
-  height: '400px',
-  borderRadius: '8px',
+  height: '100%',
+  borderRadius: '0.5rem',
 };
 
 const libraries: "places"[] = ["places"];
@@ -30,11 +35,10 @@ const NearbyMechanicsPage = () => {
 
   useEffect(() => {
     if (!bookingId) {
-      router.push('/book-service'); // Redirect if no bookingId
+      router.push('/book-service');
       return;
     }
 
-    // Auto-detect GPS location
     if (!navigator.geolocation) {
       setTimeout(() => {
         setError('Geolocation is not supported by your browser.');
@@ -61,10 +65,7 @@ const NearbyMechanicsPage = () => {
   }, [bookingId, router]);
 
   const handleSaveLocation = async () => {
-    if (!bookingId || !location) {
-      console.error('Booking ID or location is missing.');
-      return;
-    }
+    if (!bookingId || !location) return;
 
     try {
       const bookingRef = doc(db, 'bookings', bookingId);
@@ -73,57 +74,98 @@ const NearbyMechanicsPage = () => {
         status: 'location_saved',
       });
       console.log('Booking updated with user location.');
-      router.push(`/mechanics?bookingId=${bookingId}`);
+      // In a real app, this would probably show a list of mechanics or auto-assign
+      // For this flow, we'll skip to checkout or mechanic selection simulation
+      router.push(`/checkout?bookingId=${bookingId}`);
     } catch (e) {
       console.error('Error saving location to Firestore: ', e);
     }
   };
 
-  if (!bookingId) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-gray-700">Loading or invalid booking...</p>
-      </div>
-    );
-  }
+  if (!bookingId) return null;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-blue-600 mb-8">Share Your Location</h1>
+    <div className="min-h-screen bg-secondary/30 flex flex-col font-sans">
+      <Header />
 
-        {loadingLocation && (
-          <p className="text-center text-gray-600 mb-4">Detecting your location...</p>
-        )}
-
-        {error && (
-          <p className="text-center text-red-500 mb-4">{error}</p>
-        )}
-
-        {loadError && (
-          <p className="text-center text-red-500 mb-4">Error loading Google Maps.</p>
-        )}
-
-        {isLoaded && location && (
-          <div className="mb-6">
-            <GoogleMap
-              mapContainerStyle={containerStyle}
-              center={{ lat: location.latitude, lng: location.longitude }}
-              zoom={15}
-            >
-              <Marker position={{ lat: location.latitude, lng: location.longitude }} />
-            </GoogleMap>
+      <main className="flex-grow container mx-auto px-4 py-20">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4">Share Location</h1>
+            <p className="text-muted-foreground text-lg">We need your location to find the nearest mechanics.</p>
           </div>
-        )}
 
-        <button
-          onClick={handleSaveLocation}
-          disabled={!location || loadingLocation || !isLoaded}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full w-full focus:outline-none focus:shadow-outline transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Save Location & Find Mechanics
-        </button>
-      </div>
+          <Card className="border-border/50 shadow-xl overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b border-border/50">
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                Your Location
+              </CardTitle>
+              <CardDescription>
+                {loadingLocation ? "Detecting..." : location ? "Location found" : "Location required"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="h-[400px] w-full bg-secondary/50 relative">
+                {loadError && (
+                  <div className="absolute inset-0 flex items-center justify-center text-destructive">
+                    Error loading Google Maps
+                  </div>
+                )}
+
+                {!isLoaded && !loadError && (
+                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                  </div>
+                )}
+
+                {isLoaded && location && (
+                  <GoogleMap
+                    mapContainerStyle={containerStyle}
+                    center={{ lat: location.latitude, lng: location.longitude }}
+                    zoom={15}
+                    options={{
+                      disableDefaultUI: true,
+                      zoomControl: true,
+                    }}
+                  >
+                    <Marker position={{ lat: location.latitude, lng: location.longitude }} />
+                  </GoogleMap>
+                )}
+
+                {error && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+                    <p className="text-destructive font-medium">{error}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 bg-background">
+                <Button
+                  onClick={handleSaveLocation}
+                  className="w-full h-12 text-lg"
+                  disabled={!location || loadingLocation || !isLoaded}
+                >
+                  {loadingLocation ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Detecting Location...
+                    </>
+                  ) : (
+                    <>
+                      <Navigation className="w-5 h-5 mr-2" /> Confirm Location & Find Mechanics
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-center text-muted-foreground mt-4">
+                  We only use your location to connect you with nearby service providers.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };

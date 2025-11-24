@@ -1,9 +1,16 @@
-"use client"; // This is a Client Component
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Assuming config.js is in src/lib/firebase
+import { db } from '@/lib/firebase';
+import { motion } from 'framer-motion';
+import { CheckCircle2, MapPin, Wrench, Car, Clock, Calendar, Phone, MessageSquare, ChevronRight } from 'lucide-react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import clsx from 'clsx';
 
 interface BookingDetails {
   carModel: string;
@@ -15,13 +22,7 @@ interface BookingDetails {
   userLocation: { latitude: number; longitude: number };
   mechanicId: string;
   status: string;
-  createdAt: Date;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
+  createdAt: any; // Firestore Timestamp
 }
 
 const allServices = [
@@ -61,10 +62,6 @@ const TrackOrderPage = () => {
 
         if (bookingSnap.exists()) {
           const data = bookingSnap.data();
-          // Convert Firestore Timestamp to Date object if necessary
-          if (data?.createdAt && typeof data.createdAt.toDate === 'function') {
-            data.createdAt = data.createdAt.toDate();
-          }
           setBookingDetails(data as BookingDetails);
         } else {
           setError('Booking not found.');
@@ -93,126 +90,240 @@ const TrackOrderPage = () => {
     return mechanic ? mechanic.name : 'N/A';
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending_service_selection':
-      case 'pending_photo_upload':
-      case 'pending_location_share':
-        return 'bg-yellow-200 text-yellow-800';
-      case 'mechanic_selected':
-        return 'bg-blue-200 text-blue-800';
-      case 'confirmed':
-        return 'bg-green-200 text-green-800';
-      default:
-        return 'bg-gray-200 text-gray-800';
-    }
-  };
+  const steps = [
+    { id: 'confirmed', label: 'Confirmed', icon: CheckCircle2, description: 'Order received' },
+    { id: 'mechanic_on_way', label: 'On the Way', icon: Car, description: 'Mechanic is traveling' },
+    { id: 'service_started', label: 'In Progress', icon: Wrench, description: 'Service started' },
+    { id: 'completed', label: 'Completed', icon: CheckCircle2, description: 'Service done' },
+  ];
 
-  if (!bookingId) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-gray-700">Loading or invalid booking...</p>
-      </div>
-    );
-  }
+  const getCurrentStepIndex = (status: string) => {
+    const statusMap: Record<string, number> = {
+      'confirmed': 0,
+      'mechanic_on_way': 1,
+      'service_started': 2,
+      'completed': 3
+    };
+    return statusMap[status] ?? 0;
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-gray-700">Loading order tracking...</p>
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !bookingDetails) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-red-500">{error}</p>
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4 border-destructive/20 shadow-lg">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-xl font-bold text-destructive">Error</h2>
+            <p className="text-muted-foreground">{error || "Booking not found"}</p>
+            <Button onClick={() => router.push('/')} variant="outline" className="w-full">
+              Return Home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (!bookingDetails) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-lg text-gray-700">No booking details available.</p>
-      </div>
-    );
-  }
-
+  const currentStepIndex = getCurrentStepIndex(bookingDetails.status);
   const totalPrice = calculateTotalPrice();
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-blue-600 mb-8">Track Your Order</h1>
+    <div className="min-h-screen bg-secondary/30 flex flex-col font-sans">
+      <Header />
 
-        <div className="mb-6 space-y-3">
-          <h2 className="text-xl font-semibold text-gray-800">Booking Details</h2>
-          <p className="text-gray-700"><strong>Booking ID:</strong> {bookingId}</p>
-          <p className="text-gray-700"><strong>Status:</strong> <span className={`px-2 py-1 rounded-full text-sm font-medium ${getStatusColor(bookingDetails.status)}`}>{bookingDetails.status.replace(/_/g, ' ')}</span></p>
-          <p className="text-gray-700"><strong>Car Model:</strong> {bookingDetails.carModel}</p>
-          <p className="text-gray-700"><strong>Car Number:</strong> {bookingDetails.carNumber}</p>
-          <p className="text-gray-700"><strong>Date:</strong> {bookingDetails.date}</p>
-          <p className="text-gray-700"><strong>Time:</strong> {bookingDetails.time}</p>
-          {bookingDetails.createdAt && (
-            <p className="text-gray-700"><strong>Booked On:</strong> {new Date(bookingDetails.createdAt).toLocaleString()}</p>
-          )}
-        </div>
+      <main className="flex-grow container mx-auto px-4 py-24">
+        <div className="max-w-5xl mx-auto space-y-8">
 
-        {bookingDetails.selectedServices.length > 0 && (
-          <div className="mb-6 space-y-3">
-            <h2 className="text-xl font-semibold text-gray-800">Services</h2>
-            <ul className="list-disc list-inside text-gray-700">
-              {bookingDetails.selectedServices.map((serviceId) => {
-                const service = allServices.find(s => s.id === serviceId);
-                return <li key={serviceId}>{service?.name} (${service?.price})</li>;
-              })}
-            </ul>
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Track Order</h1>
+              <p className="text-muted-foreground mt-1">
+                Booking ID: <span className="font-mono text-primary font-medium">{bookingId}</span>
+              </p>
+            </div>
+            <Button variant="outline" className="gap-2" onClick={() => router.push('/')}>
+              <ChevronRight className="w-4 h-4 rotate-180" /> Back to Home
+            </Button>
           </div>
-        )}
 
-        {bookingDetails.mechanicId && (
-          <div className="mb-6 space-y-3">
-            <h2 className="text-xl font-semibold text-gray-800">Assigned Mechanic</h2>
-            <p className="text-gray-700"><strong>Name:</strong> {getMechanicName(bookingDetails.mechanicId)}</p>
-            {/* Add more mechanic details here if available */}
+          {/* Status Tracker */}
+          <Card className="border-border/50 shadow-xl overflow-hidden bg-card/50 backdrop-blur-sm">
+            <CardHeader className="bg-secondary/20 border-b border-border/50 pb-8">
+              <CardTitle>Order Status</CardTitle>
+              <CardDescription>Real-time updates on your service</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 md:p-12">
+              <div className="relative">
+                {/* Progress Bar Background */}
+                <div className="absolute top-5 left-0 w-full h-1 bg-secondary rounded-full -z-10" />
+
+                {/* Active Progress Bar */}
+                <motion.div
+                  className="absolute top-5 left-0 h-1 bg-primary rounded-full -z-10"
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                  transition={{ duration: 1, ease: "easeInOut" }}
+                />
+
+                <div className="flex justify-between items-start w-full">
+                  {steps.map((step, index) => {
+                    const isActive = index <= currentStepIndex;
+                    const isCurrent = index === currentStepIndex;
+
+                    return (
+                      <div key={step.id} className="flex flex-col items-center gap-3 relative z-10 w-24">
+                        <motion.div
+                          initial={false}
+                          animate={{
+                            backgroundColor: isActive ? 'var(--primary)' : 'var(--background)',
+                            borderColor: isActive ? 'var(--primary)' : 'var(--border)',
+                            scale: isCurrent ? 1.1 : 1,
+                          }}
+                          className={clsx(
+                            "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors duration-300 shadow-sm",
+                            isActive ? "text-primary-foreground" : "text-muted-foreground"
+                          )}
+                        >
+                          <step.icon className="w-5 h-5" />
+                        </motion.div>
+                        <div className="text-center space-y-1">
+                          <p className={clsx(
+                            "text-sm font-semibold transition-colors duration-300",
+                            isActive ? "text-foreground" : "text-muted-foreground"
+                          )}>
+                            {step.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground hidden md:block">
+                            {step.description}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column: Details */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Vehicle & Location */}
+              <Card className="border-border/50 shadow-lg h-full">
+                <CardHeader>
+                  <CardTitle>Service Details</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-start gap-4 p-4 bg-secondary/30 rounded-xl border border-border/50">
+                      <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                        <Car className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground font-medium mb-1">Vehicle</p>
+                        <p className="font-semibold text-lg">{bookingDetails.carModel}</p>
+                        <p className="text-sm text-muted-foreground">{bookingDetails.carNumber}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-4 p-4 bg-secondary/30 rounded-xl border border-border/50">
+                      <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                        <Calendar className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground font-medium mb-1">Schedule</p>
+                        <p className="font-semibold text-lg">{bookingDetails.date}</p>
+                        <p className="text-sm text-muted-foreground">{bookingDetails.time}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {bookingDetails.mechanicId && (
+                    <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border/50">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                          <Wrench className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground font-medium mb-1">Assigned Mechanic</p>
+                          <p className="font-semibold text-lg">{getMechanicName(bookingDetails.mechanicId)}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="icon" variant="ghost" className="rounded-full hover:bg-primary/10 hover:text-primary">
+                          <Phone className="w-5 h-5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="rounded-full hover:bg-primary/10 hover:text-primary">
+                          <MessageSquare className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column: Summary */}
+            <div className="space-y-8">
+              <Card className="border-border/50 shadow-lg">
+                <CardHeader>
+                  <CardTitle>Payment Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    {bookingDetails.selectedServices.map((serviceId) => {
+                      const service = allServices.find(s => s.id === serviceId);
+                      return (
+                        <div key={serviceId} className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">{service?.name}</span>
+                          <span className="font-medium">${service?.price}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-border pt-4 flex justify-between items-center">
+                    <span className="font-bold text-lg">Total Paid</span>
+                    <span className="font-bold text-2xl text-primary">${totalPrice}</span>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-secondary/20 border-t border-border/50 p-4">
+                  <p className="text-xs text-muted-foreground text-center w-full">
+                    Receipt sent to your email
+                  </p>
+                </CardFooter>
+              </Card>
+
+              <Card className="bg-primary/5 border-primary/20 shadow-sm">
+                <CardContent className="p-6 text-center space-y-4">
+                  <h3 className="font-semibold text-lg">Need Help?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Have questions about your order? Our support team is here to help 24/7.
+                  </p>
+                  <Button variant="outline" className="w-full bg-background">
+                    Contact Support
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        )}
 
-        <div className="mb-8 text-right">
-          <p className="text-2xl font-bold text-blue-600">Estimated Total: ${totalPrice}</p>
         </div>
+      </main>
 
-        {/* Simple Progress Tracker (conceptual) */}
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Progress</h2>
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <div className={`text-center ${bookingDetails.status === 'confirmed' ? 'text-green-600' : ''}`}>
-              <p>✅</p>
-              <p>Confirmed</p>
-            </div>
-            <div className="flex-grow border-t-2 border-gray-300 mx-2"></div>
-            <div className={`text-center ${bookingDetails.status === 'mechanic_on_way' ? 'text-blue-600' : ''}`}>
-              <p>🚗</p>
-              <p>Mechanic On Way</p>
-            </div>
-            <div className="flex-grow border-t-2 border-gray-300 mx-2"></div>
-            <div className={`text-center ${bookingDetails.status === 'service_started' ? 'text-blue-600' : ''}`}>
-              <p>🛠️</p>
-              <p>Service Started</p>
-            </div>
-            <div className="flex-grow border-t-2 border-gray-300 mx-2"></div>
-            <div className={`text-center ${bookingDetails.status === 'completed' ? 'text-green-600' : ''}`}>
-              <p>✅</p>
-              <p>Completed</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Footer />
     </div>
   );
 };
-
 
 export default TrackOrderPage;
