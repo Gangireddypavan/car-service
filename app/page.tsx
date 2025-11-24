@@ -68,7 +68,7 @@ const HomePage = () => {
               <Link href="/book-service" className="h-12 px-8 rounded-full bg-primary text-white font-semibold flex items-center gap-2 hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
                 Book a Service <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link href="/nearby-mechanics" className="h-12 px-8 rounded-full bg-white border border-border text-foreground font-semibold flex items-center gap-2 hover:bg-gray-50 transition-all">
+              <Link href="/nearby-mechanics" className="h-12 px-8 rounded-full bg-blue-600 text-white font-semibold flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg">
                 Find Mechanics Nearby
               </Link>
             </motion.div>
