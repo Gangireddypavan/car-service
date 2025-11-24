@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { UploadCloud, X, Image as ImageIcon, FileImage } from 'lucide-react';
+import { UploadCloud, X, FileImage } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 

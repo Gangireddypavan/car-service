@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { motion } from 'framer-motion';
-import { CheckCircle2, MapPin, Wrench, Car, Clock, Calendar, Phone, MessageSquare, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Wrench, Car, Calendar, Phone, MessageSquare, ChevronRight } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/Card';
@@ -22,7 +22,7 @@ interface BookingDetails {
   userLocation: { latitude: number; longitude: number };
   mechanicId: string;
   status: string;
-  createdAt: any; // Firestore Timestamp
+  createdAt: Date | { seconds: number; nanoseconds: number }; // Firestore Timestamp
 }
 
 const allServices = [

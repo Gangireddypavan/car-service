@@ -8,7 +8,7 @@ import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { MapPin, Loader2, Search, CheckCircle2, AlertCircle } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const containerStyle = {
@@ -44,8 +44,10 @@ const NearbyMechanicsPage = () => {
     }
 
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      setLoadingLocation(false);
+      setTimeout(() => {
+        setError('Geolocation is not supported by your browser.');
+        setLoadingLocation(false);
+      }, 0);
       return;
     }
 

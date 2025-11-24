@@ -9,7 +9,7 @@ import { Check, Wrench, Battery, Disc, Droplet, Activity, Thermometer } from 'lu
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 const services = [

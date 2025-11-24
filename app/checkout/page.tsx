@@ -12,8 +12,16 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 
+interface BookingData {
+  carModel: string;
+  carNumber: string;
+  date: string;
+  time: string;
+  selectedServices?: string[];
+}
+
 const CheckoutPage = () => {
-  const [bookingData, setBookingData] = useState<any>(null);
+  const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const router = useRouter();
@@ -27,7 +35,7 @@ const CheckoutPage = () => {
         const docRef = doc(db, 'bookings', bookingId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setBookingData(docSnap.data());
+          setBookingData(docSnap.data() as BookingData);
         } else {
           console.log('No such document!');
         }

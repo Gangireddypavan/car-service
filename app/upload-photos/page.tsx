@@ -11,7 +11,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { Camera, Upload, ArrowRight, Loader2 } from 'lucide-react';
+import { Camera, Upload, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const UploadPhotosPage = () => {
