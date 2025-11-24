@@ -21,7 +21,6 @@ const libraries: "places"[] = ["places"];
 
 const NearbyMechanicsPage = () => {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [loadingLocation, setLoadingLocation] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'detecting' | 'found' | 'scanning' | 'redirecting'>('detecting');
   const router = useRouter();
@@ -46,7 +45,6 @@ const NearbyMechanicsPage = () => {
     if (!navigator.geolocation) {
       setTimeout(() => {
         setError('Geolocation is not supported by your browser.');
-        setLoadingLocation(false);
       }, 0);
       return;
     }
@@ -57,13 +55,11 @@ const NearbyMechanicsPage = () => {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
-        setLoadingLocation(false);
         setStatus('found');
       },
       (err) => {
         console.error('Error getting location:', err);
         setError('Unable to retrieve your location. Please enable location services.');
-        setLoadingLocation(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
