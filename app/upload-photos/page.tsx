@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import UploadBox from '@/components/UploadBox';
 import Image from 'next/image';
-import { saveFileLocally } from '@/actions/upload';
+import { uploadFile } from '@/actions/upload';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/Button';
@@ -14,9 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Camera, Upload, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const UploadPhotosPage = () => {
+const UploadPhotosContent = () => {
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,17 +41,15 @@ const UploadPhotosPage = () => {
 
     setIsUploading(true);
     setUploadedImageUrl(null);
+    setUploadError(null);
 
     try {
       if (filesToUpload.length > 0) {
-        const formData = new FormData();
-        formData.append('file', filesToUpload[0]);
-
-        const result = await saveFileLocally(formData);
+        const result = await uploadFile(filesToUpload[0]);
 
         if (result.success && result.url) {
           setUploadedImageUrl(result.url);
-          console.log('File saved locally:', result.url);
+          console.log('File uploaded successfully:', result.url);
 
           const bookingRef = doc(db, 'bookings', bookingId);
           await updateDoc(bookingRef, {
@@ -61,11 +60,13 @@ const UploadPhotosPage = () => {
           // Redirect directly to checkout, skipping the nearby-mechanics page
           router.push(`/checkout?bookingId=${bookingId}`);
         } else {
-          console.error('Error saving file locally:', result.message);
+          console.error('Error uploading file:', result.message);
+          setUploadError(result.message || 'Upload failed');
         }
       }
     } catch (e) {
-      console.error('Error uploading photo or updating document: ', e);
+      console.error('Error uploading photo:', e);
+      setUploadError('An unexpected error occurred during upload.');
     } finally {
       setIsUploading(false);
     }
@@ -103,6 +104,12 @@ const UploadPhotosPage = () => {
             </CardHeader>
             <CardContent className="p-8 space-y-8">
               <UploadBox onFilesSelected={handleFilesSelected} maxFiles={3} />
+
+              {uploadError && (
+                <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm border border-red-200">
+                  {uploadError}
+                </div>
+              )}
 
               <div className="flex flex-col gap-4">
                 <Button
@@ -153,6 +160,18 @@ const UploadPhotosPage = () => {
 
       <Footer />
     </div>
+  );
+};
+
+const UploadPhotosPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <UploadPhotosContent />
+    </Suspense>
   );
 };
 

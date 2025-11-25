@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -41,7 +40,7 @@ const dummyMechanics = [
   { id: 'mech4', name: 'Quick Service', rating: 4.2, distance: 10.0, estimatedArrival: '50 min', price: 85 },
 ];
 
-const TrackOrderPage = () => {
+const TrackOrderContent = () => {
   const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -323,6 +322,18 @@ const TrackOrderPage = () => {
 
       <Footer />
     </div>
+  );
+};
+
+const TrackOrderPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <TrackOrderContent />
+    </Suspense>
   );
 };
 

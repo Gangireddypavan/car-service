@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -19,7 +18,7 @@ const containerStyle = {
 
 const libraries: "places"[] = ["places"];
 
-const NearbyMechanicsPage = () => {
+const NearbyMechanicsContent = () => {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'detecting' | 'found' | 'scanning' | 'redirecting'>('detecting');
@@ -271,6 +270,18 @@ const NearbyMechanicsPage = () => {
 
       <Footer />
     </div>
+  );
+};
+
+const NearbyMechanicsPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <NearbyMechanicsContent />
+    </Suspense>
   );
 };
 

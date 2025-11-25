@@ -16,6 +16,7 @@
   --border: #e2e8f0;
 }
 
+/* stylelint-disable-next-line */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

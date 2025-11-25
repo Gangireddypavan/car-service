@@ -1,27 +1,27 @@
-"use server";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 
-import { writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-
-export async function saveFileLocally(formData: FormData) {
-  const file = formData.get('file') as File;
-
+export async function uploadFile(file: File) {
   if (!file) {
     return { success: false, message: 'No file uploaded.' };
   }
 
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+  if (!storage) {
+    console.error("Firebase storage is not initialized");
+    return { success: false, message: "Internal error: Storage not initialized" };
+  }
 
-  const filename = `${Date.now()}-${file.name}`;
-  const publicUploadsPath = join(process.cwd(), 'public', 'uploads');
-  const filePath = join(publicUploadsPath, filename);
+  try {
+    const filename = `${Date.now()}-${file.name}`;
+    const storageRef = ref(storage, `uploads/${filename}`);
 
-  // Ensure the uploads directory exists
-  await mkdir(publicUploadsPath, { recursive: true });
+    const snapshot = await uploadBytes(storageRef, file);
+    const publicUrl = await getDownloadURL(snapshot.ref);
 
-  await writeFile(filePath, buffer);
-
-  const publicUrl = `/uploads/${filename}`;
-  return { success: true, url: publicUrl };
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, message: `Upload failed: ${errorMessage}` };
+  }
 }
